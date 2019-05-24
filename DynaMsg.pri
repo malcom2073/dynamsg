@@ -1,17 +1,17 @@
 QT += network
 
-INCLUDEPATH += $$PWD
+INCLUDEPATH += $$PWD/src
 
 SOURCES += \
-    $$PWD/dynamsg.cpp \
-    $$PWD/dynamsgconnection.cpp \
-    $$PWD/dynamsgdatastore.cpp \
-    $$PWD/dynamsgparser.cpp \
-    $$PWD/dynamsgserver.cpp
+    $$PWD/src/dynamsg.cpp \
+    $$PWD/src/dynamsgconnection.cpp \
+    $$PWD/src/dynamsgdatastore.cpp \
+    $$PWD/src/dynamsgparser.cpp \
+    $$PWD/src/dynamsgserver.cpp
 HEADERS += \
-    $$PWD/dynamsg.h \
-    $$PWD/dynamsgconnection.h \
-    $$PWD/dynamsgdatastore.h \
-    $$PWD/dynamsgparser.h \
-    $$PWD/dynamsgserver.h
+    $$PWD/src/dynamsg.h \
+    $$PWD/src/dynamsgconnection.h \
+    $$PWD/src/dynamsgdatastore.h \
+    $$PWD/src/dynamsgparser.h \
+    $$PWD/src/dynamsgserver.h
 

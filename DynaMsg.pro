@@ -1,4 +1,4 @@
-QT += core
+QT += core network
 QT -= gui
 
 TARGET = DynaMsg
@@ -6,13 +6,14 @@ CONFIG += console
 CONFIG -= app_bundle
 
 TEMPLATE = app
-
-SOURCES += main.cpp \
-    dynamsg.cpp
+INCLUDEPATH += src
+SOURCES += src/main.cpp \
+    src/dynatest.cpp
 
 DISTFILES += \
     DynaMsg.pri
 
-HEADERS += \
-    dynamsg.h
+include(DynaMsg.pri)
 
+HEADERS += \
+    src/dynatest.h
