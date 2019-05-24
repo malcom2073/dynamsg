@@ -21,9 +21,12 @@ public:
 	void sendAuthReply(bool valid);
 	void setRemoteId(quint64 remoteid) { m_remoteId = remoteid; m_parser->setRemoteId(m_remoteId); }
 	void setLocalId(quint64 localid) { m_localId = localid; m_parser->setLocalId(m_localId); }
+	quint64 getRemoteId() { return m_remoteId; }
+	quint64 getLocalId() { return m_localId; }
 	void sendSubscribeRequesst(QString topic);
 	void sendSubscribedMessage(QString messageName,QByteArray content);
 	void sendOpenPortRequest(quint64 sender);
+	void sendPtpMessage(QString target,QByteArray message);
 private:
 	quint64 m_remoteId;
 	quint64 m_localId;
@@ -42,6 +45,7 @@ signals:
 	void incomingSubscribedMessage(QString name,QByteArray payload);
 	void incomingPublishMessage(quint64 sender,QString name,QByteArray payload);
 	void incomingPortOpenRequest(quint64 requester);
+	void si_ptpMessageReceived(quint64 targetid,quint64 senderid,QString target, QByteArray content);
 public slots:
 	void socketReadyRead();
 	void socketDisconnected();

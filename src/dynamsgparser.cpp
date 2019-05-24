@@ -8,6 +8,7 @@
 #define AUTH_RESPONSE 0x2
 #define SUBSCRIBE_REQUEST 0x3
 #define SUBSCRIBE_MESSAGE 0x4
+#define PTP_MESSAGE 0xB
 #define PUBLISH_MESSAGE 0x5
 #define PORT_REQUEST 0x6
 DynaMsgParser::DynaMsgParser(QObject *parent) : QObject(parent)
@@ -45,6 +46,15 @@ QByteArray DynaMsgParser::generateSubscribeRequest(QString name)
 	subscriberequest.insert("name",name);
 	return generateWire(generateMessage(QJsonDocument(subscriberequest).toJson(),SUBSCRIBE_REQUEST));
 }
+QByteArray DynaMsgParser::generatePtpMessage(QString target, QByteArray content)
+{
+	QByteArray message;
+	message.append(quint32ToBytes(target.length()));
+	message.append(target.toLatin1());
+	message.append(content);
+	return generateWire(generateMessage(message,PTP_MESSAGE));
+}
+
 QByteArray DynaMsgParser::generateSubscribedMessage(QString name,QByteArray content)
 {
 	QByteArray message;
@@ -101,11 +111,18 @@ QByteArray DynaMsgParser::quint64ToBytes(quint64 value)
 	return retval;
 }
 
-QByteArray DynaMsgParser::generateMessage(QByteArray message, quint32 type)
+QByteArray DynaMsgParser::generateMessage(QByteArray message, quint32 type,quint64 target)
 {
 	QByteArray retval;
 	retval.append(quint32ToBytes(type));
-	retval.append(quint64ToBytes(m_remoteId));
+	if (target == 0)
+	{
+		retval.append(quint64ToBytes(m_remoteId));
+	}
+	else
+	{
+		retval.append(quint64ToBytes(target));
+	}
 	retval.append(quint64ToBytes(m_localId));
 	retval.append(message);
 	return retval;
@@ -194,24 +211,13 @@ bool DynaMsgParser::parsePacket(const QByteArray & packet)
 		QByteArray pubmsg = pubobj.value("payload").toVariant().toByteArray();
 		emit publishMessage(pubname,pubmsg);
 	}
-	else if (type == 0x0B)
+	else if (type == PTP_MESSAGE)
 	{
 		//PTP message
-		quint32 targetlen = 0;
-		targetlen += ((unsigned char)packet.at(8)) << 24;
-		targetlen += ((unsigned char)packet.at(9)) << 16;
-		targetlen += ((unsigned char)packet.at(10)) << 8;
-		targetlen += ((unsigned char)packet.at(11)) << 0;
-		QString targetstr = packet.mid(12,targetlen);
-
-		quint32 senderlen = 0;
-		senderlen += ((unsigned char)packet.at(12+targetlen)) << 24;
-		senderlen += ((unsigned char)packet.at(13+targetlen)) << 16;
-		senderlen += ((unsigned char)packet.at(14+targetlen)) << 8;
-		senderlen += ((unsigned char)packet.at(15+targetlen)) << 0;
-		QString senderstr = packet.mid(16+targetlen,senderlen);
-		QByteArray payload = packet.mid(16+targetlen+senderlen);
-		emit ptpMessageReceived(targetstr,senderstr,payload);
+		//Target and sender are contained in the IDs, everything here is just message.
+		quint32 targetlength = bytesToquint32(packet.mid(20));
+		QString target = packet.mid(24,targetlength);
+		emit ptpMessageReceived(targetid,senderid,target,packet.mid(24+targetlength));
 
 	}
 	else if (type == 2)

@@ -13,9 +13,10 @@ public:
 	bool parseJsonPacket(const QByteArray &packet);
 	QByteArray generateAuthRequest(QString name,QString pass);
 	QByteArray generateWire(QByteArray payload);
-	QByteArray generateMessage(QByteArray message, quint32 type);
+	QByteArray generateMessage(QByteArray message, quint32 type,quint64 target=0);
 	QByteArray generateSubscribeRequest(QString name);
 	QByteArray generateSubscribedMessage(QString name,QByteArray content);
+	QByteArray generatePtpMessage(QString target, QByteArray content);
 	QByteArray generateOpenPortRequest(quint64 sender);
 	QByteArray quint32ToBytes(quint32 value);
 	QByteArray quint64ToBytes(quint64 value);
@@ -33,7 +34,7 @@ signals:
 	void jsonPacketReceived(QJsonObject message);
 	void subscribeMessage(quint64 target, quint64 sender,QString message);
 	void publishMessage(QString name, QByteArray payload);
-	void ptpMessageReceived(QString target,QString sender,QByteArray payload);
+	void ptpMessageReceived(quint64 targetid,quint64 senderid,QString target,QByteArray payload);
 	void authResponse(quint64 target, quint64 sender, QJsonObject caps);
 	void authRequest(quint64 target, quint64 sender, QJsonObject authobject);
 	void incomingPublishMessage(quint64 sender,QString name,QByteArray payload);

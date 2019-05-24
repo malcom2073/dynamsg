@@ -12,6 +12,7 @@ DynaMsg::DynaMsg(QString key, QObject *parent) : QObject(parent)
 {
 	m_key = key;
 	m_ipcDataStore = new DynaMsgDataStore();
+	m_coreConnection = 0;
 }
 void DynaMsg::setName(QString key)
 {
@@ -26,6 +27,7 @@ void DynaMsg::connectToCore(QString address, int portNum)
 	connect(m_coreConnection,SIGNAL(authResponse(quint64,quint64,QJsonObject)),this,SLOT(authResponse(quint64,quint64,QJsonObject)));
 	connect(m_coreConnection,SIGNAL(incomingSubscribedMessage(QString,QByteArray)),this,SIGNAL(incomingSubscribedMessage(QString,QByteArray)));
 	connect(m_coreConnection,SIGNAL(incomingPortOpenRequest(quint64)),this,SLOT(incomingPortOpenRequest(quint64)));
+	connect(m_coreConnection,SIGNAL(si_ptpMessageReceived(quint64,quint64,QString,QByteArray)),this,SLOT(ptpMessageReceived(quint64,quint64,QString,QByteArray)));
 
 	m_coreConnection->connectToHost(address,portNum);
 }
@@ -37,6 +39,50 @@ void DynaMsg::setConnectionPass(QString pass)
 void DynaMsg::disconnectFromCore()
 {
 	m_coreConnection->disconnectFromHost();
+}
+void DynaMsg::ptpMessageReceived(quint64 targetid, quint64 senderid,QString target, QByteArray payload)
+{
+	if (m_authedConnectionMap.contains(target))
+	{
+		qDebug() << "DynaMsg: Got message for someone else, passing it on:" << payload;
+		m_authedConnectionMap.value(target)->sendPtpMessage(target,payload);
+		return;
+	}
+	if (m_connectionIdToConnectionMap.contains(senderid))
+	{
+		if (m_connectionIdToConnectionMap.value(senderid)->getLocalId() == targetid)
+		{
+			qDebug() << "DynaMsg: Got message for me:" << payload.toHex();
+			emit si_incomingMessage(payload);
+		}
+		else
+		{
+			for (int i=0;i<m_authedConnectionList.size();i++)
+			{
+				if (targetid == m_authedConnectionList.at(i)->getRemoteId())
+				{
+					//Pass the message on!
+					qDebug() << "DynaMsg: Got message for someone else, passing it on:" << payload;
+					m_authedConnectionList.at(i)->sendPtpMessage(target,payload);
+					return;
+				}
+			}
+			qDebug() << "DynaMsg: Got message for someone else:" << payload;
+		}
+
+	}
+	else
+	{
+		if (m_coreConnection->getLocalId() == targetid)
+		{
+			qDebug() << "DynaMsg: Got message for me:" << payload;
+			emit si_incomingMessage(payload);
+		}
+		else
+		{
+			qDebug() << "DynaMsg: Got message for someone else:" << payload;
+		}
+	}
 }
 
 void DynaMsg::coreConnectionConnected()
@@ -58,6 +104,7 @@ void DynaMsg::newClientConnected()
 	connect(connection,SIGNAL(authRequest(quint64,quint64,QJsonObject)),this,SLOT(authRequest(quint64,quint64,QJsonObject)));
 	connect(connection,SIGNAL(subscribeRequest(quint64,quint64,QString)),this,SIGNAL(subscribeRequest(quint64,quint64,QString)));
 	connect(connection,SIGNAL(incomingPublishMessage(quint64,QString,QByteArray)),this,SIGNAL(incomingPublishMessage(quint64,QString,QByteArray)));
+	connect(connection,SIGNAL(si_ptpMessageReceived(quint64,quint64,QString,QByteArray)),this,SLOT(ptpMessageReceived(quint64,quint64,QString,QByteArray)));
 	m_unAuthedConnectionList.append(connection);
 }
 quint64 DynaMsg::getRandomId()
@@ -101,6 +148,7 @@ void DynaMsg::authRequest(quint64 targetid, quint64 senderid, QJsonObject authob
 			qDebug() << "Connection" << connectionid << authobject.value("name").toString();
 			connection->setLocalId(targetid);
 			connection->setRemoteId(connectionid);
+			m_authedConnectionMap.insert(authobject.value("name").toString(),connection);
 		}
 		else
 		{
@@ -221,8 +269,16 @@ void DynaMsg::sendMessage(QString target,QByteArray content,QString sender)
 	{
 		sender = m_key;
 	}
-	QByteArray message = generateSendMessage(target,sender,content);
-	QByteArray packet = generateCorePacket(message);
+	if (m_authedConnectionMap.contains(target))
+	{
+		m_authedConnectionMap.value(target)->sendPtpMessage(target,content);
+	}
+	else
+	{
+		m_coreConnection->sendPtpMessage(target,content);
+	}
+//	QByteArray message = generateSendMessage(target,sender,content);
+//	QByteArray packet = generateCorePacket(message);
 //	m_socket->write(packet);
 }
 QByteArray DynaMsg::generateSendMessage(QString target,QString sender,QByteArray payload)

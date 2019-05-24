@@ -298,7 +298,7 @@ signals:
 	void si_jsonPacketReceived(QJsonObject message);
 	void si_subscribeMessage(QString message);
 	void si_publishMessage(QString name, QByteArray payload);
-	void si_ptpMessageReceived(QString target,QString sender,QByteArray payload);
+	void si_ptpMessageReceived(quint64 targetid,quint64 senderid, QString target,QByteArray payload);
 	void si_ptpMessageReceived(QByteArray payload);
 	void subscribeRequest(quint64 target, quint64 sender,QString name);
 	void incomingSubscribedMessage(QString name,QByteArray payload);
@@ -311,6 +311,7 @@ private slots:
 	void authResponse(quint64 target, quint64 sender, QJsonObject caps);
 	void authRequest(quint64 target, quint64 sender, QJsonObject authobject);
 	void incomingPortOpenRequest(quint64 requester);
+	void ptpMessageReceived(quint64 targetid, quint64 senderid, QString target, QByteArray payload);
 //	void subscribeRequest(quint64 target, quint64 sender,QString name);
 
 };

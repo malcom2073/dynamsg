@@ -14,7 +14,7 @@ DynaMsgConnection::DynaMsgConnection(QObject *parent) : QObject(parent)
 	//connect(m_parser,SIGNAL(jsonPacketReceived(QJsonObject)),this,SIGNAL(si_jsonPacketReceived(QJsonObject)));
 	//connect(m_parser,SIGNAL(publishMessage(QString,QByteArray)),this,SIGNAL(si_publishMessage(QString,QByteArray)));
 	connect(m_parser,SIGNAL(subscribeMessage(quint64,quint64,QString)),this,SIGNAL(subscribeRequest(quint64,quint64,QString)));
-	//connect(m_parser,SIGNAL(ptpMessageReceived(QString,QString,QByteArray)),this,SIGNAL(si_ptpMessageReceived(QString,QString,QByteArray)));
+	connect(m_parser,SIGNAL(ptpMessageReceived(quint64,quint64,QString,QByteArray)),this,SIGNAL(si_ptpMessageReceived(quint64,quint64,QString,QByteArray)));
 	connect(m_parser,SIGNAL(authRequest(quint64,quint64,QJsonObject)),this,SIGNAL(authRequest(quint64,quint64,QJsonObject)));
 	connect(m_parser,SIGNAL(authResponse(quint64,quint64,QJsonObject)),this,SIGNAL(authResponse(quint64,quint64,QJsonObject)));
 	connect(m_parser,SIGNAL(incomingSubscribedMessage(QString,QByteArray)),this,SIGNAL(incomingSubscribedMessage(QString,QByteArray)));
@@ -35,6 +35,7 @@ DynaMsgConnection::DynaMsgConnection(QTcpSocket *socket,QObject *parent) : QObje
 	//connect(m_parser,SIGNAL(publishMessage(QString,QByteArray)),this,SIGNAL(si_publishMessage(QString,QByteArray)));
 	connect(m_parser,SIGNAL(subscribeMessage(quint64,quint64,QString)),this,SIGNAL(subscribeRequest(quint64,quint64,QString)));
 	//connect(m_parser,SIGNAL(ptpMessageReceived(QString,QString,QByteArray)),this,SIGNAL(si_ptpMessageReceived(QString,QString,QByteArray)));
+	connect(m_parser,SIGNAL(ptpMessageReceived(quint64,quint64,QString,QByteArray)),this,SIGNAL(si_ptpMessageReceived(quint64,quint64,QString,QByteArray)));
 	connect(m_parser,SIGNAL(authRequest(quint64,quint64,QJsonObject)),this,SIGNAL(authRequest(quint64,quint64,QJsonObject)));
 	connect(m_parser,SIGNAL(authResponse(quint64,quint64,QJsonObject)),this,SIGNAL(authResponse(quint64,quint64,QJsonObject)));
 	connect(m_parser,SIGNAL(incomingSubscribedMessage(QString,QByteArray)),this,SIGNAL(incomingSubscribedMessage(QString,QByteArray)));
@@ -102,6 +103,12 @@ void DynaMsgConnection::sendSubscribedMessage(QString messageName,QByteArray con
 	m_socket->write(m_parser->generateSubscribedMessage(messageName,content));
 	m_socket->flush();
 }
+void DynaMsgConnection::sendPtpMessage(QString target,QByteArray message)
+{
+	m_socket->write(m_parser->generatePtpMessage(target,message));
+	m_socket->flush();
+}
+
 void DynaMsgConnection::sendOpenPortRequest(quint64 sender)
 {
 	m_socket->write(m_parser->generateOpenPortRequest(sender));
