@@ -13,7 +13,8 @@ public:
 	bool runInValidAuthConnectTest();
 	bool runNullAuthConnectTest();
 	bool runSendMessageTest();
-
+	bool runReceiveMessageTest();
+	bool clientCoreClientMessageTest();
 private:
 	void run();
 	DynaMsg *testcore;
