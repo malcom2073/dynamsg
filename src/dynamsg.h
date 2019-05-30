@@ -306,6 +306,7 @@ signals:
 
 public slots:
 private slots:
+	void remoteDisconnected();
 	void coreConnectionConnected();
 	void newClientConnected();
 	void authResponse(quint64 target, quint64 sender, QJsonObject caps);

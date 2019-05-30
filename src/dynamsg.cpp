@@ -28,6 +28,7 @@ void DynaMsg::connectToCore(QString address, int portNum)
 	connect(m_coreConnection,SIGNAL(incomingSubscribedMessage(QString,QByteArray)),this,SIGNAL(incomingSubscribedMessage(QString,QByteArray)));
 	connect(m_coreConnection,SIGNAL(incomingPortOpenRequest(quint64)),this,SLOT(incomingPortOpenRequest(quint64)));
 	connect(m_coreConnection,SIGNAL(si_ptpMessageReceived(quint64,quint64,QString,QByteArray)),this,SLOT(ptpMessageReceived(quint64,quint64,QString,QByteArray)));
+	connect(m_coreConnection,SIGNAL(remoteDisconnected()),this,SLOT(remoteDisconnected()));
 
 	m_coreConnection->connectToHost(address,portNum);
 }
@@ -48,6 +49,21 @@ void DynaMsg::ptpMessageReceived(quint64 targetid, quint64 senderid,QString targ
 		m_authedConnectionMap.value(target)->sendPtpMessage(target,payload);
 		return;
 	}
+	if (m_key == target)
+	{
+		qDebug() << "DynaMsg: Got a message for me: " << payload;
+		emit si_incomingMessage(payload);
+		return;
+	}
+	//Message isn't for me, and isn't to anyone currently connected. Reject it.
+	DynaMsgConnection *conn = qobject_cast<DynaMsgConnection*>(sender());
+	if (!conn)
+	{
+		qDebug() << "ptpMessageReceived, not for me, and no sending connection available!";
+		return;
+	}
+	//conn->sendMessage();
+
 	if (m_connectionIdToConnectionMap.contains(senderid))
 	{
 		if (m_connectionIdToConnectionMap.value(senderid)->getLocalId() == targetid)
@@ -84,6 +100,27 @@ void DynaMsg::ptpMessageReceived(quint64 targetid, quint64 senderid,QString targ
 		}
 	}
 }
+void DynaMsg::remoteDisconnected()
+{
+	//A remote socket has disconnected!
+	DynaMsgConnection *conn = qobject_cast<DynaMsgConnection*>(sender());
+	if (!conn)
+	{
+		//We got this message from something other than a DMC?
+		qDebug() << "remoteDisconnected called, but not from a DMC?";
+		return;
+	}
+	if (m_authedConnectionList.contains(conn))
+	{
+		qDebug() << "Authed connection" << conn->getRemoteName() << "has disconnected, removing it from list";
+		//This is an authed connection that has disconnected, remove it from all lists.
+		m_authedConnectionList.removeOne(conn);
+		if (m_authedConnectionMap.contains(conn->getRemoteName()))
+		{
+			m_authedConnectionMap.remove(conn->getRemoteName());
+		}
+	}
+}
 
 void DynaMsg::coreConnectionConnected()
 {
@@ -105,6 +142,8 @@ void DynaMsg::newClientConnected()
 	connect(connection,SIGNAL(subscribeRequest(quint64,quint64,QString)),this,SIGNAL(subscribeRequest(quint64,quint64,QString)));
 	connect(connection,SIGNAL(incomingPublishMessage(quint64,QString,QByteArray)),this,SIGNAL(incomingPublishMessage(quint64,QString,QByteArray)));
 	connect(connection,SIGNAL(si_ptpMessageReceived(quint64,quint64,QString,QByteArray)),this,SLOT(ptpMessageReceived(quint64,quint64,QString,QByteArray)));
+	connect(connection,SIGNAL(remoteDisconnected()),this,SLOT(remoteDisconnected()));
+
 	m_unAuthedConnectionList.append(connection);
 }
 quint64 DynaMsg::getRandomId()
@@ -148,6 +187,7 @@ void DynaMsg::authRequest(quint64 targetid, quint64 senderid, QJsonObject authob
 			qDebug() << "Connection" << connectionid << authobject.value("name").toString();
 			connection->setLocalId(targetid);
 			connection->setRemoteId(connectionid);
+			connection->setRemoteName(authobject.value("name").toString());
 			m_authedConnectionMap.insert(authobject.value("name").toString(),connection);
 		}
 		else

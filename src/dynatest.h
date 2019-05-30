@@ -15,6 +15,7 @@ public:
 	bool runSendMessageTest();
 	bool runReceiveMessageTest();
 	bool clientCoreClientMessageTest();
+	bool clientCoreClientDisconnectTest();
 private:
 	void run();
 	DynaMsg *testcore;

@@ -48,6 +48,13 @@ void DynaTest::run()
 		testresults+="***FAILURE*** : clientCoreClientMessageTest";
 		allgood = false;
 	}
+	if (clientCoreClientDisconnectTest()) testresults+= "***SUCCEED*** : clientCoreClientDisconnectTest";
+	else
+	{
+		testresults+="***FAILURE*** : clientCoreClientDisconnectTest";
+		allgood = false;
+	}
+
 
 
 	if (allgood)
@@ -312,6 +319,71 @@ bool DynaTest::clientCoreClientMessageTest()
 		c1->sendMessage("c2",QString("WEEEEE").toLatin1());
 	});
 	connect(c2,&DynaMsg::si_incomingMessage,[this,&c2recvmessage,&spinloop](QByteArray msg) {
+		qDebug() << msg;
+		spinloop = false;
+		c2recvmessage = true;
+	});
+	QTimer t;
+	t.setSingleShot(true);
+	t.setInterval(3000);
+	connect(&t,&QTimer::timeout,[this,c1,c2,&spinloop]() {
+		spinloop = false;
+	});
+	t.start();
+	while (spinloop)
+	{
+		QCoreApplication::processEvents();
+		QThread::msleep(1);
+	}
+	t.stop();
+	delete c1;
+	delete c2;
+	delete testcore;
+	testcore = 0;
+	return c1connect && c2connect && coreconnect && c2recvmessage;
+}
+bool DynaTest::clientCoreClientDisconnectTest()
+{
+	//Tests same as clientCoreClient, but disconnects before the message is sent to ensure
+	// the core acts appropriatly.
+	//This tests two clients and one core, where
+	//one client sends a PTP message to the other, through the core,
+	//using the client name as a target.
+	testcore = new DynaMsg("core");
+	bool c1connect = false;
+	bool c2connect = false;
+	bool coreconnect = false;
+	bool c2recvmessage = false;
+	bool spinloop = true;
+	connect(testcore,&DynaMsg::clientConnected,[this,&coreconnect]() {
+		coreconnect = true;
+	});
+
+	testcore->startListen(2073);
+	DynaMsg *c1 = new DynaMsg("c1");
+	DynaMsg *c2 = new DynaMsg("c2");
+	c1->setConnectionPass("pass");
+	c1->connectToCore("localhost",2073);
+	//Once C1 connects, tell C2 to connect.
+	connect(c1,&DynaMsg::coreConnected,[this,c1,c2,&c1connect]() {
+		qDebug() << "**TEST** Client says core connected";
+		c1connect = true;
+		c2->setConnectionPass("pass");
+		c2->connectToCore("localhost",2073);
+//		c1->sendMessage("core",QString("WEEEEE").toLatin1());
+	});
+
+	//Once C2 is connected, disconnect C1 and have C2 send a message to C1.
+	connect(c2,&DynaMsg::coreConnected,[this,c1,c2,&c2connect]() {
+		qDebug() << "**TEST** Client says core connected";
+		c2connect = true;
+//		testcore->sendMessage("c1",QString("WEE123").toLatin1());
+		c1->disconnectFromCore();
+		c2->sendMessage("c1",QString("WEEEEE").toLatin1());
+	});
+
+	//We should get some sort of notification here...
+	connect(c1,&DynaMsg::si_incomingMessage,[this,&c2recvmessage,&spinloop](QByteArray msg) {
 		qDebug() << msg;
 		spinloop = false;
 		c2recvmessage = true;

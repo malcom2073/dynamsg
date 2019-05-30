@@ -85,11 +85,11 @@ void DynaMsgConnection::listen(int port)
 
 void DynaMsgConnection::socketDisconnected()
 {
-	m_server->deleteLater();
+	emit remoteDisconnected();
 }
 void DynaMsgConnection::socketReadyRead()
 {
-	qDebug() << "Ready Read";
+	//qDebug() << "Ready Read";
 	m_socketBuffer.append(m_socket->readAll());
 	checkBuffer();
 }
@@ -107,6 +107,10 @@ void DynaMsgConnection::sendPtpMessage(QString target,QByteArray message)
 {
 	m_socket->write(m_parser->generatePtpMessage(target,message));
 	m_socket->flush();
+}
+void DynaMsgConnection::sendErrorFrame()
+{
+	//Send an error frame for a previous sequence number here.
 }
 
 void DynaMsgConnection::sendOpenPortRequest(quint64 sender)
@@ -126,7 +130,7 @@ void DynaMsgConnection::checkBuffer()
 	if (m_socketBuffer.size() <= 11)
 	{
 		//Not large enough for auth
-		qDebug() << "Not enough for auth:" << m_socketBuffer.size();
+		//qDebug() << "Not enough for auth:" << m_socketBuffer.size();
 		return;
 	}
 	if (m_socketBuffer.at(0) == 0x01 && m_socketBuffer.at(1) == 0x02 && m_socketBuffer.at(2) == 0x03)
@@ -137,7 +141,7 @@ void DynaMsgConnection::checkBuffer()
 		length += ((unsigned char)m_socketBuffer.at(4)) << 16;
 		length += ((unsigned char)m_socketBuffer.at(5)) << 8;
 		length += ((unsigned char)m_socketBuffer.at(6)) << 0;
-		qDebug() << "Length:" << length;
+		//qDebug() << "Length:" << length;
 		if (m_socketBuffer.size() >= length+11)
 		{
 			//We have a full packet! Should be an auth packet, so download and verify!
@@ -168,6 +172,8 @@ void DynaMsgConnection::serverNewConnection()
 		return;
 	}
 	m_server->close();
+	m_server->deleteLater();
+	m_server = 0;
 	connect(m_socket,SIGNAL(disconnected()),this,SLOT(socketDisconnected()));
 	connect(m_socket,SIGNAL(readyRead()),this,SLOT(socketReadyRead()));
 }
